@@ -56,27 +56,49 @@ const existingFromPaths = new Set(existing.docs.map((d) => (d as { fromPath: str
 console.log(`> Existing Payload redirects: ${existingFromPaths.size}\n`)
 
 // ─── Resolve best destination + import ───────────────────────────────
-let created = 0, skipped = 0, upgraded = 0, failed = 0
+let created = 0, skipped = 0, upgraded = 0, failed = 0, skippedSelfLoop = 0
 const note = `Imported from sitemap-audit on ${new Date().toISOString().slice(0, 10)}`
 
-function bestDestination(fromPath: string, fallback: string): { to: string; upgraded: boolean } {
+/**
+ * Returns:
+ *   { to, upgraded: true }     — redirect destination is better than the fallback
+ *   { to, upgraded: false }    — falling back to the original audit destination
+ *   null                       — fromPath is ALREADY a valid URL on the new site
+ *                                (a redirect would be a self-loop — skip entirely)
+ */
+function bestDestination(
+  fromPath: string,
+  fallback: string,
+): { to: string; upgraded: boolean } | null {
   // Extract the slug from the old URL (last path segment, no trailing slash)
   const slug = fromPath.replace(/^\/|\/$/g, '').split('/').pop() || ''
   if (!slug) return { to: fallback, upgraded: false }
+  // /podcast/<slug>/ paths: if the slug exists in Payload, the URL is
+  // already valid on the new site — NO REDIRECT NEEDED (would be a self-loop).
+  if (fromPath.startsWith('/podcast/') && podcastSlugs.has(slug)) {
+    return null
+  }
+  // Same for /blog/<slug>/ paths (defensive — the audit didn't have any
+  // at the time, but a future re-run could).
+  if (fromPath.startsWith('/blog/') && blogSlugs.has(slug)) {
+    return null
+  }
   // Old blog URLs at root-level (e.g. /chiropractor-marketing-guide/) → /blog/<slug>/
   if (!fromPath.startsWith('/blog/') && !fromPath.startsWith('/podcast/') && blogSlugs.has(slug)) {
     return { to: `/blog/${slug}/`, upgraded: true }
-  }
-  // Old podcast URLs (e.g. /podcast/the-win-win-system/) → /podcast/<slug>/
-  if (fromPath.startsWith('/podcast/') && podcastSlugs.has(slug)) {
-    return { to: `/podcast/${slug}/`, upgraded: true }
   }
   return { to: fallback, upgraded: false }
 }
 
 for (const e of entries) {
   if (existingFromPaths.has(e.fromPath)) { skipped++; continue }
-  const { to, upgraded: wasUpgraded } = bestDestination(e.fromPath, e.toPath)
+  const result = bestDestination(e.fromPath, e.toPath)
+  if (result === null) {
+    process.stdout.write(`  - ${e.fromPath} (already a valid URL on new site — no redirect needed)\n`)
+    skippedSelfLoop++
+    continue
+  }
+  const { to, upgraded: wasUpgraded } = result
   try {
     await payload.create({
       collection: 'redirects',
@@ -95,5 +117,6 @@ for (const e of entries) {
 console.log(`\n══ DONE ══`)
 console.log(`  created: ${created} (of which ${upgraded} got upgraded destinations)`)
 console.log(`  skipped (already exist): ${skipped}`)
+console.log(`  skipped (self-loop avoided): ${skippedSelfLoop}`)
 console.log(`  failed:  ${failed}`)
 process.exit(0)
