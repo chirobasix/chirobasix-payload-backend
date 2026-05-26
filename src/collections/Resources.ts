@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { triggerRegenerate } from '../lib/regenerate-hook'
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? 'https://chirobasix-website.pages.dev').replace(/\/$/, '')
 
@@ -23,6 +24,7 @@ export const Resources: CollectionConfig = {
     update: ({ req: { user } }) => Boolean(user),
     delete: ({ req: { user } }) => (user as { role?: string } | null)?.role === 'admin',
   },
+  hooks: { afterChange: [triggerRegenerate] },
   fields: [
     { name: 'title', type: 'text', label: 'Title', required: true },
     {

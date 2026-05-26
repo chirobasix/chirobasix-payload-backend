@@ -1,4 +1,5 @@
 import type { CollectionConfig } from 'payload'
+import { triggerRegenerate } from '../lib/regenerate-hook'
 
 /**
  * URL redirects managed by the team. Astro marketing site fetches the
@@ -28,6 +29,7 @@ export const Redirects: CollectionConfig = {
     update: ({ req: { user } }) => Boolean(user),
     delete: ({ req: { user } }) => Boolean(user),
   },
+  hooks: { afterChange: [triggerRegenerate] },
   fields: [
     {
       name: 'fromPath',

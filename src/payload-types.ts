@@ -69,6 +69,12 @@ export interface Config {
   collections: {
     users: User;
     media: Media;
+    pages: Page;
+    blog: Blog;
+    podcast: Podcast;
+    services: Service;
+    resources: Resource;
+    redirects: Redirect;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -78,13 +84,19 @@ export interface Config {
   collectionsSelect: {
     users: UsersSelect<false> | UsersSelect<true>;
     media: MediaSelect<false> | MediaSelect<true>;
+    pages: PagesSelect<false> | PagesSelect<true>;
+    blog: BlogSelect<false> | BlogSelect<true>;
+    podcast: PodcastSelect<false> | PodcastSelect<true>;
+    services: ServicesSelect<false> | ServicesSelect<true>;
+    resources: ResourcesSelect<false> | ResourcesSelect<true>;
+    redirects: RedirectsSelect<false> | RedirectsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
     'payload-migrations': PayloadMigrationsSelect<false> | PayloadMigrationsSelect<true>;
   };
   db: {
-    defaultIDType: string;
+    defaultIDType: number;
   };
   fallbackLocale: null;
   globals: {};
@@ -122,7 +134,9 @@ export interface UserAuthOperations {
  * via the `definition` "users".
  */
 export interface User {
-  id: string;
+  id: number;
+  name?: string | null;
+  role: 'admin' | 'editor';
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -147,8 +161,12 @@ export interface User {
  * via the `definition` "media".
  */
 export interface Media {
-  id: string;
+  id: number;
+  /**
+   * For accessibility + SEO. Describe what the image shows.
+   */
   alt: string;
+  prefix?: string | null;
   updatedAt: string;
   createdAt: string;
   url?: string | null;
@@ -163,10 +181,292 @@ export interface Media {
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages".
+ */
+export interface Page {
+  id: number;
+  title: string;
+  /**
+   * URL path. Use "home" for the homepage (/), otherwise the page lives at /<slug>/.
+   */
+  slug: string;
+  description: string;
+  ogImage?: (number | null) | Media;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "blog".
+ */
+export interface Blog {
+  id: number;
+  title: string;
+  slug: string;
+  description: string;
+  /**
+   * e.g. "Local SEO", "Facebook Ads", "Email Marketing"
+   */
+  category?: string | null;
+  publishDate: string;
+  /**
+   * Optional — for SEO freshness signals.
+   */
+  updateDate?: string | null;
+  author?: string | null;
+  heroImage: number | Media;
+  heroImageAlt?: string | null;
+  excerpt?: string | null;
+  readingTimeMinutes?: number | null;
+  tags?:
+    | {
+        tag?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  /**
+   * Manual TOC entries for the sticky right sidebar on long posts.
+   */
+  tocAnchors?:
+    | {
+        anchor: string;
+        label: string;
+        id?: string | null;
+      }[]
+    | null;
+  ogImage?: (number | null) | Media;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "podcast".
+ */
+export interface Podcast {
+  id: number;
+  title: string;
+  slug: string;
+  description: string;
+  episodeNumber: number;
+  seasonNumber?: number | null;
+  category?: string | null;
+  publishDate: string;
+  /**
+   * Buzzsprout/Spotify/etc. embed code, if not using audioUrl alone.
+   */
+  audioEmbedHtml?: string | null;
+  audioUrl: string;
+  /**
+   * Display string e.g. "38 min".
+   */
+  durationLabel?: string | null;
+  durationMinutes?: number | null;
+  videoEmbedUrl?: string | null;
+  youtubeId?: string | null;
+  hosts?:
+    | {
+        name?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  guests?:
+    | {
+        name?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  chapters?:
+    | {
+        /**
+         * e.g. 02:30
+         */
+        time: string;
+        label: string;
+        id?: string | null;
+      }[]
+    | null;
+  linksMentioned?:
+    | {
+        label?: string | null;
+        href?: string | null;
+        icon?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  transcript?:
+    | {
+        ts?: string | null;
+        speaker?: string | null;
+        text?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  tags?:
+    | {
+        tag?: string | null;
+        id?: string | null;
+      }[]
+    | null;
+  showNotes?: string | null;
+  heroImage?: (number | null) | Media;
+  ogImage?: (number | null) | Media;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "services".
+ */
+export interface Service {
+  id: number;
+  title: string;
+  slug: string;
+  subtitle?: string | null;
+  eyebrow?: string | null;
+  description: string;
+  heroImage?: (number | null) | Media;
+  cta?: {
+    label?: string | null;
+    href?: string | null;
+  };
+  publishDate?: string | null;
+  ogImage?: (number | null) | Media;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resources".
+ */
+export interface Resource {
+  id: number;
+  title: string;
+  slug: string;
+  description: string;
+  leadMagnetType?: ('guide' | 'checklist' | 'tool' | 'audit' | 'consultation' | 'book') | null;
+  heroImage?: (number | null) | Media;
+  /**
+   * Configures the lead-capture form on this resource page.
+   */
+  formFields?:
+    | {
+        name: string;
+        label: string;
+        type?: ('text' | 'email' | 'tel' | 'url' | 'textarea' | 'checkbox' | 'checkbox-group') | null;
+        required?: boolean | null;
+        id?: string | null;
+      }[]
+    | null;
+  postSubmitRedirect?: string | null;
+  ogImage?: (number | null) | Media;
+  body?: {
+    root: {
+      type: string;
+      children: {
+        type: any;
+        version: number;
+        [k: string]: unknown;
+      }[];
+      direction: ('ltr' | 'rtl') | null;
+      format: 'left' | 'start' | 'center' | 'right' | 'end' | 'justify' | '';
+      indent: number;
+      version: number;
+    };
+    [k: string]: unknown;
+  } | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * Redirect old URLs to new ones (e.g. WordPress legacy URLs → new site URLs).
+ *
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects".
+ */
+export interface Redirect {
+  id: number;
+  /**
+   * Old URL. Always start with /, e.g. "/old-services/seo/".
+   */
+  fromPath: string;
+  /**
+   * New URL. Start with / for internal (e.g. "/services/local-seo/") or https:// for external.
+   */
+  toPath: string;
+  statusCode: '301' | '302' | '307' | '308';
+  /**
+   * Why was this redirect added? Helps the team understand history later.
+   */
+  note?: string | null;
+  updatedAt: string;
+  createdAt: string;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
  * via the `definition` "payload-kv".
  */
 export interface PayloadKv {
-  id: string;
+  id: number;
   key: string;
   data:
     | {
@@ -183,20 +483,44 @@ export interface PayloadKv {
  * via the `definition` "payload-locked-documents".
  */
 export interface PayloadLockedDocument {
-  id: string;
+  id: number;
   document?:
     | ({
         relationTo: 'users';
-        value: string | User;
+        value: number | User;
       } | null)
     | ({
         relationTo: 'media';
-        value: string | Media;
+        value: number | Media;
+      } | null)
+    | ({
+        relationTo: 'pages';
+        value: number | Page;
+      } | null)
+    | ({
+        relationTo: 'blog';
+        value: number | Blog;
+      } | null)
+    | ({
+        relationTo: 'podcast';
+        value: number | Podcast;
+      } | null)
+    | ({
+        relationTo: 'services';
+        value: number | Service;
+      } | null)
+    | ({
+        relationTo: 'resources';
+        value: number | Resource;
+      } | null)
+    | ({
+        relationTo: 'redirects';
+        value: number | Redirect;
       } | null);
   globalSlug?: string | null;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   updatedAt: string;
   createdAt: string;
@@ -206,10 +530,10 @@ export interface PayloadLockedDocument {
  * via the `definition` "payload-preferences".
  */
 export interface PayloadPreference {
-  id: string;
+  id: number;
   user: {
     relationTo: 'users';
-    value: string | User;
+    value: number | User;
   };
   key?: string | null;
   value?:
@@ -229,7 +553,7 @@ export interface PayloadPreference {
  * via the `definition` "payload-migrations".
  */
 export interface PayloadMigration {
-  id: string;
+  id: number;
   name?: string | null;
   batch?: number | null;
   updatedAt: string;
@@ -240,6 +564,8 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  name?: T;
+  role?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -263,6 +589,7 @@ export interface UsersSelect<T extends boolean = true> {
  */
 export interface MediaSelect<T extends boolean = true> {
   alt?: T;
+  prefix?: T;
   updatedAt?: T;
   createdAt?: T;
   url?: T;
@@ -274,6 +601,179 @@ export interface MediaSelect<T extends boolean = true> {
   height?: T;
   focalX?: T;
   focalY?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "pages_select".
+ */
+export interface PagesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  description?: T;
+  ogImage?: T;
+  body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "blog_select".
+ */
+export interface BlogSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  description?: T;
+  category?: T;
+  publishDate?: T;
+  updateDate?: T;
+  author?: T;
+  heroImage?: T;
+  heroImageAlt?: T;
+  excerpt?: T;
+  readingTimeMinutes?: T;
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  tocAnchors?:
+    | T
+    | {
+        anchor?: T;
+        label?: T;
+        id?: T;
+      };
+  ogImage?: T;
+  body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "podcast_select".
+ */
+export interface PodcastSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  description?: T;
+  episodeNumber?: T;
+  seasonNumber?: T;
+  category?: T;
+  publishDate?: T;
+  audioEmbedHtml?: T;
+  audioUrl?: T;
+  durationLabel?: T;
+  durationMinutes?: T;
+  videoEmbedUrl?: T;
+  youtubeId?: T;
+  hosts?:
+    | T
+    | {
+        name?: T;
+        id?: T;
+      };
+  guests?:
+    | T
+    | {
+        name?: T;
+        id?: T;
+      };
+  chapters?:
+    | T
+    | {
+        time?: T;
+        label?: T;
+        id?: T;
+      };
+  linksMentioned?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+        icon?: T;
+        id?: T;
+      };
+  transcript?:
+    | T
+    | {
+        ts?: T;
+        speaker?: T;
+        text?: T;
+        id?: T;
+      };
+  tags?:
+    | T
+    | {
+        tag?: T;
+        id?: T;
+      };
+  showNotes?: T;
+  heroImage?: T;
+  ogImage?: T;
+  body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "services_select".
+ */
+export interface ServicesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  subtitle?: T;
+  eyebrow?: T;
+  description?: T;
+  heroImage?: T;
+  cta?:
+    | T
+    | {
+        label?: T;
+        href?: T;
+      };
+  publishDate?: T;
+  ogImage?: T;
+  body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "resources_select".
+ */
+export interface ResourcesSelect<T extends boolean = true> {
+  title?: T;
+  slug?: T;
+  description?: T;
+  leadMagnetType?: T;
+  heroImage?: T;
+  formFields?:
+    | T
+    | {
+        name?: T;
+        label?: T;
+        type?: T;
+        required?: T;
+        id?: T;
+      };
+  postSubmitRedirect?: T;
+  ogImage?: T;
+  body?: T;
+  updatedAt?: T;
+  createdAt?: T;
+}
+/**
+ * This interface was referenced by `Config`'s JSON-Schema
+ * via the `definition` "redirects_select".
+ */
+export interface RedirectsSelect<T extends boolean = true> {
+  fromPath?: T;
+  toPath?: T;
+  statusCode?: T;
+  note?: T;
+  updatedAt?: T;
+  createdAt?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
