@@ -119,31 +119,31 @@ export async function POST(req: Request) {
     }
   }
 
-  // After GitHub commit, kick CF Pages to deploy. The CF Pages →
-  // GitHub auto-deploy integration has been intermittently flaky on
-  // this project (recent commits sometimes don't trigger builds), so
-  // we force the deploy directly via the Pages REST API instead of
-  // relying on it. If no files changed, no deploy needed.
+  // After GitHub commit, kick CF Pages to deploy via a deploy-hook URL.
+  // Why a deploy hook (not the generic deployments API): the deployments
+  // API requires uploading a build manifest, which we don't have because
+  // CF Pages builds the site itself. Deploy hooks are purpose-built
+  // webhooks (created in the CF Pages dashboard) that trigger a fresh
+  // git-based build. URL format:
+  //   https://api.cloudflare.com/client/v4/pages/webhooks/deploy_hooks/<id>
+  //
+  // To create one: CF dashboard → chirobasix-website → Settings →
+  // Builds & deployments → Deploy hooks → Add → name "Payload
+  // regenerate", branch main → copy URL → set as CF_DEPLOY_HOOK_URL
+  // on Vercel.
+  //
+  // If the env var isn't set, we rely on CF Pages' built-in GitHub
+  // auto-deploy (which has been flaky but usually lands within 5 min).
   let deployTriggered = false
-  let deployId: string | undefined
   let deployError: string | undefined
-  if (committed > 0 && process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_PAGES_PROJECT) {
+  const hookUrl = process.env.CF_DEPLOY_HOOK_URL
+  if (committed > 0 && hookUrl) {
     try {
-      const deployUrl = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/pages/projects/${process.env.CLOUDFLARE_PAGES_PROJECT}/deployments`
-      const deployRes = await fetch(deployUrl, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ branch: GITHUB_BRANCH }),
-      })
-      const deployData = await deployRes.json() as { success: boolean; result?: { id: string }; errors?: unknown }
-      if (deployData.success && deployData.result?.id) {
+      const deployRes = await fetch(hookUrl, { method: 'POST' })
+      if (deployRes.ok) {
         deployTriggered = true
-        deployId = deployData.result.id
       } else {
-        deployError = JSON.stringify(deployData.errors).slice(0, 300)
+        deployError = `${deployRes.status}: ${(await deployRes.text()).slice(0, 200)}`
       }
     } catch (e) {
       deployError = (e as Error).message.slice(0, 300)
@@ -155,7 +155,6 @@ export async function POST(req: Request) {
     committed,
     unchanged,
     deployTriggered,
-    deployId,
     deployError,
     errors: errors.length ? errors : undefined,
     counts,

@@ -35,27 +35,32 @@ export const triggerRegenerate: CollectionAfterChangeHook = async ({ collection,
   const slug = (doc as { slug?: string }).slug || (doc as { id?: string | number }).id
   console.log(`[regenerate-hook] ${operation} on ${collection.slug}:${slug} → POST ${url}`)
 
-  // Fire-and-forget — don't make the editor wait. Errors logged but
-  // don't propagate (a failed rebuild trigger shouldn't fail the save).
-  fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${REGENERATE_TOKEN}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ trigger: { collection: collection.slug, operation, slug } }),
-  })
-    .then(async (res) => {
-      const body = await res.text().then((t) => t.slice(0, 500))
-      if (res.ok) {
-        console.log(`[regenerate-hook] regenerate OK: ${body}`)
-      } else {
-        console.error(`[regenerate-hook] regenerate FAILED ${res.status}: ${body}`)
-      }
+  // AWAIT the fetch (not fire-and-forget). Vercel serverless functions
+  // terminate the moment the calling function returns, so a fire-and-
+  // forget fetch never completes — we observed this directly: hook fired
+  // but no commit was made. Editor sees a 2-5s delay on save, which is
+  // a fair trade for guaranteed sync.
+  //
+  // We do NOT throw on failure — a failed rebuild shouldn't block the
+  // editor's save. The error is logged for ops.
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${REGENERATE_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ trigger: { collection: collection.slug, operation, slug } }),
     })
-    .catch((e) => {
-      console.error(`[regenerate-hook] fetch threw:`, e)
-    })
+    const body = await res.text().then((t) => t.slice(0, 500))
+    if (res.ok) {
+      console.log(`[regenerate-hook] regenerate OK: ${body}`)
+    } else {
+      console.error(`[regenerate-hook] regenerate FAILED ${res.status}: ${body}`)
+    }
+  } catch (e) {
+    console.error('[regenerate-hook] fetch threw:', e)
+  }
 
   return doc
 }
