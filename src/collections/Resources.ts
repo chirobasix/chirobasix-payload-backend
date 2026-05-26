@@ -72,7 +72,7 @@ export const Resources: CollectionConfig = {
           name: 'type',
           type: 'select',
           label: 'Input Type',
-          options: ['text', 'email', 'tel', 'url', 'textarea'],
+          options: ['text', 'email', 'tel', 'url', 'textarea', 'checkbox', 'checkbox-group'],
         },
         { name: 'required', type: 'checkbox', label: 'Required' },
       ],

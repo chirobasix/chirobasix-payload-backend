@@ -120,7 +120,10 @@ export const Blog: CollectionConfig = {
         description: 'Manual TOC entries for the sticky right sidebar on long posts.',
       },
       fields: [
-        { name: 'id', type: 'text', label: 'Anchor ID', required: true },
+        // Renamed from 'id' because Payload reserves 'id' on array items
+        // as the internal primary key — using 'anchor' here for the
+        // visible HTML id attribute on headings.
+        { name: 'anchor', type: 'text', label: 'Anchor ID (HTML)', required: true },
         { name: 'label', type: 'text', label: 'Label', required: true },
       ],
     },
