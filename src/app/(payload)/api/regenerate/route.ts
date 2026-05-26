@@ -119,10 +119,44 @@ export async function POST(req: Request) {
     }
   }
 
+  // After GitHub commit, kick CF Pages to deploy. The CF Pages →
+  // GitHub auto-deploy integration has been intermittently flaky on
+  // this project (recent commits sometimes don't trigger builds), so
+  // we force the deploy directly via the Pages REST API instead of
+  // relying on it. If no files changed, no deploy needed.
+  let deployTriggered = false
+  let deployId: string | undefined
+  let deployError: string | undefined
+  if (committed > 0 && process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID && process.env.CLOUDFLARE_PAGES_PROJECT) {
+    try {
+      const deployUrl = `https://api.cloudflare.com/client/v4/accounts/${process.env.CLOUDFLARE_ACCOUNT_ID}/pages/projects/${process.env.CLOUDFLARE_PAGES_PROJECT}/deployments`
+      const deployRes = await fetch(deployUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${process.env.CLOUDFLARE_API_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ branch: GITHUB_BRANCH }),
+      })
+      const deployData = await deployRes.json() as { success: boolean; result?: { id: string }; errors?: unknown }
+      if (deployData.success && deployData.result?.id) {
+        deployTriggered = true
+        deployId = deployData.result.id
+      } else {
+        deployError = JSON.stringify(deployData.errors).slice(0, 300)
+      }
+    } catch (e) {
+      deployError = (e as Error).message.slice(0, 300)
+    }
+  }
+
   return NextResponse.json({
     ok: errors.length === 0,
     committed,
     unchanged,
+    deployTriggered,
+    deployId,
+    deployError,
     errors: errors.length ? errors : undefined,
     counts,
   })
